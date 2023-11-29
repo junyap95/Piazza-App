@@ -16,7 +16,6 @@ app.get("/", async (req, res) => {
   } catch (error) {
     res.send({ message: error });
   }
-  res.send("Homepage");
 });
 
 mongoose.connect(process.env.DB_CONNECTOR).then(() => {
