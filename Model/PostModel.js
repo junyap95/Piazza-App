@@ -14,6 +14,7 @@
  */
 
 const mongoose = require("mongoose");
+
 const CommentSchema = mongoose.Schema({
   user: {
     type: String,
@@ -28,6 +29,8 @@ const CommentSchema = mongoose.Schema({
     default: Date.now,
   },
 });
+
+const validTopics = ["Politics", "Health", "Sport", "Tech"];
 const PostSchema = mongoose.Schema({
   user: {
     type: String,
@@ -52,6 +55,11 @@ const PostSchema = mongoose.Schema({
   comments: [CommentSchema],
   topic: {
     type: String,
+    required: true,
+    enum: validTopics,
+  },
+  expiryDate: {
+    type: Date,
     required: true,
   },
   date: {

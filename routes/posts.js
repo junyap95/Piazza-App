@@ -1,32 +1,45 @@
 const express = require("express");
 const router = express.Router();
 const PostModel = require("../Model/PostModel");
-
+const UserModel = require("../Model/UserModel");
+const verify = require("../verifyToken");
 // router.get("/", (req, res) => {
 //   res.send("You are in posts");
 // });
 
 // 1. POST (write post)
-router.post("/", async (req, res) => {
+router.post("/write", verify, async (req, res) => {
+  const getUser = await UserModel.findById(req.user._id);
+  if (!getUser) {
+    return res.status(404).send({ message: "User not found" });
+  }
+
+  const todaysDate = new Date(2023, 11, 30);
+
+  const expiryDate = new Date().setDate(todaysDate.getDate() + 1);
+
+  console.log(todaysDate < expiryDate);
+
   // a json obj for database
   const piazzaData = new PostModel({
     // extract what the user gave
-    user: req.body.user,
+    user: getUser.username,
     title: req.body.title,
     text: req.body.text,
     topic: req.body.topic,
+    expiryDate,
   });
   try {
     const postToBeSaved = await piazzaData.save();
     res.send(postToBeSaved);
-  } catch (err) {
+  } catch (error) {
     // good practice to send back json obj
-    res.send({ message: err });
+    res.status(400).send({ message: error.errors });
   }
 });
 
 // 2. GET (read post)
-router.get("/:postId", async (req, res) => {
+router.get("/read/:postId", async (req, res) => {
   try {
     const getPostById = await PostModel.findById(req.params.postId);
     res.send(getPostById);
@@ -36,27 +49,30 @@ router.get("/:postId", async (req, res) => {
 });
 
 // 3. PATCH (like and dislike post)
-router.patch("/:postId", async (req, res) => {
-  const getPostLikes = await PostModel.findById(req.params.postId);
-  const like = true;
-
+router.patch("/like/:postId", verify, async (req, res) => {
   try {
-    const likePostById = await PostModel.findOneAndUpdate(
-      { _id: req.params.postId },
-      {
-        $set: {
-          user: req.body.user,
-          title: req.body.title,
-          text: req.body.text,
-        },
-        $inc: {
-          likeCount: like ? 1 : -1,
-        },
-      }
-    );
-    res.send(likePostById);
+    // get and to compare dates
+    const userPost = await PostModel.findById(req.params.postId);
+
+    const todaysDate = new Date();
+    const expiryDate = new Date(userPost.expiryDate);
+    const isExpired = todaysDate >= expiryDate;
+
+    if (!isExpired) {
+      await PostModel.findOneAndUpdate(
+        { _id: req.params.postId },
+        {
+          $inc: {
+            likeCount: 1,
+          },
+        }
+      );
+    } else {
+      return res.status(400).send("Sorry! You cannot like an expired Post!");
+    }
+    return res.send(userPost);
   } catch (err) {
-    res.send({ message: err });
+    return res.send({ message: err });
   }
 });
 
