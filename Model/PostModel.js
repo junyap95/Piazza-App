@@ -44,6 +44,8 @@ const PostSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  usersWhoLiked: [],
+  usersWhoDisliked: [],
   likeCount: {
     type: Number,
     default: 0,
@@ -52,7 +54,7 @@ const PostSchema = mongoose.Schema({
     type: Number,
     default: 0,
   },
-  comments: [CommentSchema],
+  comments: [],
   topic: {
     type: String,
     required: true,
@@ -68,4 +70,7 @@ const PostSchema = mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("posts", PostSchema);
+module.exports = {
+  Post: mongoose.model("Post", PostSchema),
+  Comment: mongoose.model("Comment", CommentSchema),
+};
