@@ -1,0 +1,77 @@
+if (
+      !likesArray.includes(getUser.username) &&
+      disikesArray.includes(getUser.username) &&
+      usersAction === "like"
+    ) {
+      await Post.findOneAndUpdate(
+        { _id: req.params.postId },
+        {
+          $addToSet: {
+            usersWhoLiked: getUser.username,
+          },
+          $pull: {
+            usersWhoDisliked: getUser.username,
+          },
+          $inc: {
+            likeCount: 1,
+            dislikeCount: -1,
+          },
+        }
+      );
+    } else if (
+      likesArray.includes(getUser.username) &&
+      !disikesArray.includes(getUser.username) &&
+      usersAction === "dislike"
+    ) {
+      await Post.findOneAndUpdate(
+        { _id: req.params.postId },
+        {
+          $addToSet: {
+            usersWhoDisliked: getUser.username,
+          },
+          $pull: {
+            usersWhoLiked: getUser.username,
+          },
+          $inc: {
+            likeCount: -1,
+            dislikeCount: 1,
+          },
+        }
+      );
+    } else if (
+      !likesArray.includes(getUser.username) &&
+      !disikesArray.includes(getUser.username) &&
+      usersAction === "like"
+    ) {
+      await Post.findOneAndUpdate(
+        { _id: req.params.postId },
+        {
+          $addToSet: {
+            usersWhoLiked: getUser.username,
+          },
+          $inc: {
+            likeCount: 1,
+          },
+        }
+      );
+    } else if (
+      !likesArray.includes(getUser.username) &&
+      !disikesArray.includes(getUser.username) &&
+      usersAction === "dislike"
+    ) {
+      await Post.findOneAndUpdate(
+        { _id: req.params.postId },
+        {
+          $addToSet: {
+            usersWhoDisliked: getUser.username,
+          },
+          $inc: {
+            dislikeCount: 1,
+          },
+        }
+      );
+    }
+
+    const updatedPost = await Post.findById(req.params.postId);
+    return res.send(updatedPost);
+  }
