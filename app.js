@@ -5,7 +5,6 @@ const authRoute = require("./routes/auth");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const { Post } = require("./Model/PostModel");
-const verify = require("./verifyToken");
 require("dotenv/config");
 
 app.use(bodyParser.json());
@@ -21,15 +20,16 @@ app.get("/", async (req, res) => {
     }
     return res.send(newsFeed);
   } catch (error) {
-    return res.send({ message: error });
+    return res.send({ error });
   }
 });
 
 mongoose.connect(process.env.DB_CONNECTOR).then(() => {
+  // demonstrates database is connected
   console.log("DB connected");
 });
 
 app.listen(3000, () => {
-  // demonstrate server is working
+  // demonstrates server is working
   console.log("Server Running...");
 });

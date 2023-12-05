@@ -1,22 +1,7 @@
-/**
- * TODO
- * Each post should include:
- * Post identifier
- * Title
- * Topic
- * Timestamp
- * Message body
- * Post-expiration (expired post cant be liked or disliked)
- * Status of post (Live/Expired)
- * Post owner name (OP)
- * No. of likes/ comments
- * Others...
- */
-
 const mongoose = require("mongoose");
 
 const CommentSchema = mongoose.Schema({
-  user: {
+  username: {
     type: String,
     required: true,
   },
@@ -24,7 +9,11 @@ const CommentSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  date: {
+  postCommented: {
+    type: String,
+    required: true,
+  },
+  dateCreated: {
     type: Date,
     default: Date.now,
   },
@@ -32,7 +21,7 @@ const CommentSchema = mongoose.Schema({
 
 const validTopics = ["Politics", "Health", "Sport", "Tech"];
 const PostSchema = mongoose.Schema({
-  user: {
+  username: {
     type: String,
     required: true,
   },
@@ -64,13 +53,13 @@ const PostSchema = mongoose.Schema({
     type: Date,
     required: true,
   },
-  date: {
+  dateCreated: {
     type: Date,
     default: Date.now,
   },
 });
 
 module.exports = {
-  Post: mongoose.model("Post", PostSchema),
-  Comment: mongoose.model("Comment", CommentSchema),
+  Post: mongoose.model("Posts", PostSchema),
+  Comment: mongoose.model("Comments", CommentSchema),
 };
