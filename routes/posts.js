@@ -3,9 +3,9 @@ const router = express.Router();
 const { Post, Comment } = require("../Model/PostModel");
 const User = require("../Model/UserModel");
 const verify = require("../validations/verifyToken");
-const likeOrDislikePostHandler = require("./likeOrDislikePostHandler");
+const likeOrDislikePostHandler = require("../helperFunctions/likeOrDislikePostHandler");
 
-// 1. POST (write post)
+// 1. POST (write a new post)
 router.post("/write", verify, async (req, res) => {
   const userInfo = await User.findById(req.user._id);
   if (!userInfo) {
@@ -33,7 +33,7 @@ router.post("/write", verify, async (req, res) => {
   }
 });
 
-// 2. GET (read post)
+// 2. GET (browse a post by Id)
 router.get("/read/:postId", verify, async (req, res) => {
   try {
     const postInfo = await Post.findById(req.params.postId);
@@ -58,7 +58,7 @@ router.get("/browse/:topic", verify, async (req, res) => {
   }
 });
 
-// 4. GET (get a post by topic of highest interest)
+// 4. GET (browse a post by topic of highest interest)
 router.get("/topPost/:topic", verify, async (req, res) => {
   try {
     // use aggregate pipeline to create a new field 'combinedCount' using $addFields. Note the use of []
@@ -113,7 +113,7 @@ router.patch("/dislike/:postId", verify, async (req, res) => {
   return likeOrDislikePostHandler(req, res, "dislike");
 });
 
-// 8. PATCH (Comment on post. Logged in user only)
+// 8. PATCH (comment on a post)
 router.patch("/comment/:postId", verify, async (req, res) => {
   try {
     // get the user information who is commenting, to log the username into the comment schema to be stored in database
