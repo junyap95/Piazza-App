@@ -1,19 +1,15 @@
 const { Post } = require("../Model/PostModel");
 const User = require("../Model/UserModel");
-
+const { updateOneStatus } = require("./postStatusUpdater");
 // A function to be used by the like and dislike route to prevent code duplication
 const likeOrDislikePostHandler = async (req, res, usersAction) => {
   try {
-    // get post information to extract date of post created
-    const postInfo = await Post.findById(req.params.postId);
-    const expiryDate = postInfo.expiryDate;
-
-    const todaysDate = new Date();
-    const isExpired = todaysDate >= expiryDate;
+    // get latest post information to extract date of post created
+    const postInfo = await updateOneStatus(req);
 
     // 'originalPoster' finds the user who posted this post
+    const originalPoster = postInfo.username;
     // 'userInfo' finds the user who has been verified, note req.user._id comes from the verify function
-    const originalPoster = postInfo.user;
     const userInfo = await User.findById(req.user._id);
 
     // extract likes and dislikes array information from the post
@@ -21,7 +17,7 @@ const likeOrDislikePostHandler = async (req, res, usersAction) => {
     const dislikesArray = postInfo.usersWhoDisliked;
 
     // Users cannot like/dislike an expired post
-    if (isExpired) {
+    if (postInfo.expiryStatus === "Expired") {
       return res
         .status(403)
         .send({ message: "Sorry, this post has expired..." });
@@ -34,7 +30,7 @@ const likeOrDislikePostHandler = async (req, res, usersAction) => {
         .send({ message: "Sorry, you cannot like/dislike your own post!" });
     }
 
-    // a placeholder to be used to update the post
+    // a parameter placeholder to be used to update the post
     const updateUserArray = {};
 
     // these conditions are to ensure no user can perform both like and dislike on one same post

@@ -4,6 +4,10 @@ const { Post, Comment } = require("../Model/PostModel");
 const User = require("../Model/UserModel");
 const verify = require("../validations/verifyToken");
 const likeOrDislikePostHandler = require("../helperFunctions/likeOrDislikePostHandler");
+const {
+  updateAllStatus,
+  updateOneStatus,
+} = require("../helperFunctions/postStatusUpdater");
 
 // 1. POST (write a new post)
 router.post("/write", verify, async (req, res) => {
@@ -33,11 +37,11 @@ router.post("/write", verify, async (req, res) => {
   }
 });
 
-// 2. GET (browse a post by Id)
-router.get("/read/:postId", verify, async (req, res) => {
+// 2. GET (browse a post by postId)
+router.get("/read/:postId", async (req, res) => {
   try {
-    const postInfo = await Post.findById(req.params.postId);
-    res.send(postInfo);
+    const postInfo = await updateOneStatus(req);
+    return res.send(postInfo);
   } catch (error) {
     res.status(400).send({ error });
   }
@@ -46,6 +50,7 @@ router.get("/read/:postId", verify, async (req, res) => {
 // 3. GET (browse all posts by topic)
 router.get("/browse/:topic", verify, async (req, res) => {
   try {
+    await updateAllStatus();
     const postsByTopic = await Post.find({
       topic: req.params.topic,
     });
@@ -61,6 +66,8 @@ router.get("/browse/:topic", verify, async (req, res) => {
 // 4. GET (browse a post by topic of highest interest)
 router.get("/topPost/:topic", verify, async (req, res) => {
   try {
+    // before any operations, check and update the post's expiry status and update if expired
+    await updateAllStatus();
     // use aggregate pipeline to create a new field 'combinedCount' using $addFields. Note the use of []
     const result = await Post.aggregate([
       {
@@ -70,9 +77,12 @@ router.get("/topPost/:topic", verify, async (req, res) => {
       },
       {
         $addFields: {
-          combinedCount: { $sum: ["$likeCount", "$dislikeCount"] },
+          combinedCount: {
+            $sum: ["$likeCount", "$dislikeCount"],
+          },
         },
       },
+
       {
         $sort: { combinedCount: -1 },
       },
@@ -89,11 +99,13 @@ router.get("/topPost/:topic", verify, async (req, res) => {
 // 5. GET (browse all expired topics)
 router.get("/expired/:topic", verify, async (req, res) => {
   try {
-    const todaysDate = new Date();
+    // before any operations, check and update the post's expiry status and update if expired
+    await updateAllStatus();
     const expiredPosts = await Post.find({
       topic: req.params.topic,
-      expiryDate: { $lt: todaysDate },
+      expiryStatus: "Expired",
     });
+
     if (expiredPosts.length === 0) {
       return res.send({ message: "No expired posts here..." });
     }
@@ -122,19 +134,16 @@ router.patch("/comment/:postId", verify, async (req, res) => {
     if (!userInfo) {
       return res.status(404).send({ message: "User not found!" });
     }
-
+    // use helper function to get updated post
     const postInfo = await Post.findById(req.params.postId);
-    const todaysDate = new Date();
-    const expiryDate = postInfo.expiryDate;
-    const isExpired = todaysDate >= expiryDate;
 
     const userComment = new Comment({
       username: userInfo.username,
       text: req.body.text,
-      postCommented: `${postInfo.title} by ${postInfo.username}`,
+      postIdCommented: `Post Id: ${postInfo._id}`,
     });
 
-    if (!isExpired) {
+    if (postInfo.expiryStatus === "Live") {
       const updatedPost = await Post.findOneAndUpdate(
         { _id: req.params.postId },
         {
@@ -157,13 +166,22 @@ router.patch("/comment/:postId", verify, async (req, res) => {
 });
 
 // for testing only
-// router.delete("/delete", async (req, res) => {
-//   try {
-//     await Post.deleteMany({});
-//     return res.send("deleted");
-//   } catch (error) {
-//     return res.send({ error });
-//   }
-// });
+router.delete("/deleteAllPosts", async (req, res) => {
+  try {
+    await Post.deleteMany({});
+    return res.send("deleted");
+  } catch (error) {
+    return res.send({ error });
+  }
+});
+
+router.delete("/deleteAllComments", async (req, res) => {
+  try {
+    await Comment.deleteMany({});
+    return res.send("deleted");
+  } catch (error) {
+    return res.send({ error });
+  }
+});
 
 module.exports = router;

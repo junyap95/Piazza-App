@@ -9,7 +9,7 @@ const CommentSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  postCommented: {
+  postIdCommented: {
     type: String,
     required: true,
   },
@@ -19,7 +19,7 @@ const CommentSchema = mongoose.Schema({
   },
 });
 
-const validTopics = ["Politics", "Health", "Sport", "Tech"];
+const validTopics = ["Politics", "Health", "Sports", "Tech"];
 const PostSchema = mongoose.Schema({
   username: {
     type: String,
@@ -28,6 +28,11 @@ const PostSchema = mongoose.Schema({
   title: {
     type: String,
     required: true,
+  },
+  topic: {
+    type: String,
+    required: true,
+    enum: validTopics,
   },
   text: {
     type: String,
@@ -44,14 +49,13 @@ const PostSchema = mongoose.Schema({
     default: 0,
   },
   comments: [],
-  topic: {
-    type: String,
-    required: true,
-    enum: validTopics,
-  },
   expiryDate: {
     type: Date,
     required: true,
+  },
+  expiryStatus: {
+    type: String,
+    default: "Live",
   },
   dateCreated: {
     type: Date,
