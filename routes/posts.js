@@ -11,25 +11,33 @@ const {
 
 // 1. POST (write a new post)
 router.post("/write", verify, async (req, res) => {
+  // find the user writing this post by by using its ID. the verified user object in req.user._id is returned by the 'verify' function
   const userInfo = await User.findById(req.user._id);
   if (!userInfo) {
     return res.status(404).send({ error: "User not found!" });
   }
 
-  // The expiry date which is 5 minutes starting from when the post is created
+  // Get the current date and time
   const todaysDate = new Date();
-  const expiryDate = new Date().setMinutes(todaysDate.getMinutes() + 5);
+  // Calculate the expiry date by adding 5 minutes to the current time
+  const expiryDate = new Date().setMinutes(todaysDate.getMinutes() + 60);
 
-  // a json obj for database
+  // Create a new Post object with the following fields:
   const piazzaData = new Post({
+    // The username is obtained from the authenticated user's information
     username: userInfo.username,
+
+    // The title, text, and topic are provided in the request body
     title: req.body.title,
     text: req.body.text,
     topic: req.body.topic,
+
+    // The expiry date is set to 5 minutes from the current date and time
     expiryDate: expiryDate,
   });
 
   try {
+    // save the Post object into database
     const postToBeSaved = await piazzaData.save();
     res.send(postToBeSaved);
   } catch (error) {
@@ -128,22 +136,25 @@ router.patch("/dislike/:postId", verify, async (req, res) => {
 // 8. PATCH (comment on a post)
 router.patch("/comment/:postId", verify, async (req, res) => {
   try {
-    // get the user information who is commenting, to log the username into the comment schema to be stored in database
+    // find the user commenting on this post by by using its ID. the verified user object in req.user._id is returned by the 'verify' function
     const userInfo = await User.findById(req.user._id);
-
     if (!userInfo) {
       return res.status(404).send({ message: "User not found!" });
     }
-    // use helper function to get updated post
-    const postInfo = await Post.findById(req.params.postId);
 
+    // use helper function to get the updated post
+    const postInfo = await updateOneStatus(req);
+
+    // Create a new Comment object with the following fields:
     const userComment = new Comment({
       username: userInfo.username,
       text: req.body.text,
-      postIdCommented: `Post Id: ${postInfo._id}`,
+      postIdCommented: postInfo._id,
     });
 
+    // if the post is not expired, the comment will be pushed into an array in Post where it stores all comments from authorised users
     if (postInfo.expiryStatus === "Live") {
+      // a mongoose method is used here to push the comment into the comment array in Post
       const updatedPost = await Post.findOneAndUpdate(
         { _id: req.params.postId },
         {
@@ -153,6 +164,7 @@ router.patch("/comment/:postId", verify, async (req, res) => {
         },
         { returnDocument: "after" }
       );
+      // the comment will also be stored in database
       await userComment.save();
       return res.send(updatedPost);
     } else {

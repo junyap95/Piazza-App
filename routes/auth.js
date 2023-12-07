@@ -43,7 +43,7 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { error } = loginValidation(req.body);
   if (error) {
-    return res.status(400).send({ error });
+    return res.status(400).send({ error: error["details"][0]["message"] });
   }
   try {
     // check if user exists using email
