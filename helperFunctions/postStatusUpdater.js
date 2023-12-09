@@ -1,5 +1,6 @@
 const { Post } = require("../Model/PostModel");
 const express = require("express");
+
 // a helper function that solely 'refreshes and updates' all posts' status
 const updateAllStatus = async () => {
   try {
@@ -19,6 +20,7 @@ const updateOneStatus = async (req) => {
     const post = await Post.findOne({
       _id: req.params.postId,
     });
+
     // if the post has expired, update it status to "Expired"
     if (new Date() >= post.expiryDate) {
       const updatedPost = await Post.findOneAndUpdate(
@@ -28,6 +30,7 @@ const updateOneStatus = async (req) => {
       );
       return updatedPost;
     }
+
     // if not expired, return the post as it is
     return post;
   } catch (error) {

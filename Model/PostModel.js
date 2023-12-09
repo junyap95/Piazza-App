@@ -13,6 +13,7 @@ const CommentSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  commentId: { type: String },
   dateCreated: {
     type: Date,
     default: Date.now,

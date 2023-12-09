@@ -53,7 +53,7 @@ const likeOrDislikePostHandler = async (req, res, usersAction) => {
     // update the the arrays for users who likes/ dislikes
     await Post.findOneAndUpdate({ _id: req.params.postId }, updateUserArray);
 
-    // update the likeCount and dislikeCount secondly, because only when the  arrays are updated then their lengths can be computed. Note aggregate pipeline is used here
+    // update the likeCount and dislikeCount second, because only when the  arrays are updated then their lengths can be computed. Note aggregate pipeline is used here
     const updateCount = [
       {
         $set: {

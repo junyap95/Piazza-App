@@ -46,7 +46,7 @@ router.post("/write", verify, async (req, res) => {
 });
 
 // 2. GET (browse a post by postId)
-router.get("/read/:postId", async (req, res) => {
+router.get("/read/:postId", verify, async (req, res) => {
   try {
     const postInfo = await updateOneStatus(req);
     return res.send(postInfo);
@@ -74,9 +74,10 @@ router.get("/browse/:topic", verify, async (req, res) => {
 // 4. GET (browse a post by topic of highest interest)
 router.get("/topPost/:topic", verify, async (req, res) => {
   try {
-    // before any operations, check and update the post's expiry status and update if expired
+    // before any operations, check and update the posts' expiry status and update if expired
     await updateAllStatus();
-    // use aggregate pipeline to create a new field 'combinedCount' using $addFields. Note the use of []
+
+    // use mongo aggregate pipeline to create a new field 'combinedCount' using $addFields. Note the use of []
     const result = await Post.aggregate([
       {
         $match: {
@@ -98,7 +99,11 @@ router.get("/topPost/:topic", verify, async (req, res) => {
         $limit: 1,
       },
     ]);
-    return res.send(result[0]);
+
+    if (result.length !== 0) {
+      return res.send(result[0]);
+    }
+    return res.send({ message: "No post here yet..." });
   } catch (error) {
     return res.status(400).send({ error });
   }
@@ -109,6 +114,8 @@ router.get("/expired/:topic", verify, async (req, res) => {
   try {
     // before any operations, check and update the post's expiry status and update if expired
     await updateAllStatus();
+
+    // returns an array of expired posts
     const expiredPosts = await Post.find({
       topic: req.params.topic,
       expiryStatus: "Expired",
@@ -154,23 +161,78 @@ router.patch("/comment/:postId", verify, async (req, res) => {
 
     // if the post is not expired, the comment will be pushed into an array in Post where it stores all comments from authorised users
     if (postInfo.expiryStatus === "Live") {
-      // a mongoose method is used here to push the comment into the comment array in Post
-      const updatedPost = await Post.findOneAndUpdate(
+      // the comment will be stored in database
+      const savedComment = await userComment.save();
+
+      // an update method to push the comment into the comments array in Post, stored in the following object format below:
+      await Post.findOneAndUpdate(
         { _id: req.params.postId },
         {
           $push: {
-            comments: `${userComment.username} : ${userComment.text}`,
+            comments: {
+              username: userComment.username,
+              text: userComment.text,
+              // savedComment._id is an object returned by the save() function
+              commentId: savedComment._id.toString(),
+            },
           },
         },
         { returnDocument: "after" }
       );
-      // the comment will also be stored in database
-      await userComment.save();
-      return res.send(updatedPost);
+      // return an object where we can extract the commend id generated
+      return res.send(savedComment);
     } else {
       return res
         .status(403)
         .send({ message: "Sorry! You cannot comment on an expired post!" });
+    }
+  } catch (error) {
+    return res.status(400).send({ error });
+  }
+});
+
+// 8. DELETE (delete own comment on a post)
+router.delete("/deleteComment/:commentId", verify, async (req, res) => {
+  try {
+    // find the comment using its ID stored in database
+    const comment = await Comment.findById(req.params.commentId);
+
+    // then check if the comment exists
+    if (!comment) {
+      return res.send({
+        message: "Sorry! Either the post or the comment has been removed...",
+      });
+    }
+
+    // using the post id stored in the comment above, find the specific post
+    const postInfo = await Post.findById(comment.postIdCommented);
+
+    // check if the post is expired
+    if (new Date() >= postInfo.expiryDate) {
+      return res.send({ message: "This post is expired!" });
+    }
+
+    // extract the user's username who made this comment
+    const originalPoster = comment.username;
+
+    // 'userInfo' finds the user who has been verified for this endpoint, note req.user._id comes from the verify function
+    const userInfo = await User.findById(req.user._id);
+
+    if (originalPoster === userInfo.username) {
+      // delete the comment in the database
+      await Comment.deleteOne({ _id: req.params.commentId });
+
+      // update the array which stores users' comments in the post
+      const originalPost = await Post.findOneAndUpdate(
+        { _id: comment.postIdCommented },
+        {
+          $pull: { comments: { commentId: req.params.commentId } },
+        },
+        { returnDocument: "after" }
+      );
+      return res.send(originalPost);
+    } else {
+      return res.send({ message: "You can only delete your own comment!" });
     }
   } catch (error) {
     return res.status(400).send({ error });
