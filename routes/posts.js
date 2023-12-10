@@ -223,38 +223,19 @@ router.delete("/deleteComment/:commentId", verify, async (req, res) => {
       await Comment.deleteOne({ _id: req.params.commentId });
 
       // update the array which stores users' comments in the post
-      const originalPost = await Post.findOneAndUpdate(
+      const updatedPost = await Post.findOneAndUpdate(
         { _id: comment.postIdCommented },
         {
           $pull: { comments: { commentId: req.params.commentId } },
         },
         { returnDocument: "after" }
       );
-      return res.send(originalPost);
+      return res.send(updatedPost);
     } else {
       return res.send({ message: "You can only delete your own comment!" });
     }
   } catch (error) {
     return res.status(400).send({ error });
-  }
-});
-
-// for testing only
-router.delete("/deleteAllPosts", async (req, res) => {
-  try {
-    await Post.deleteMany({});
-    return res.send("deleted");
-  } catch (error) {
-    return res.send({ error });
-  }
-});
-
-router.delete("/deleteAllComments", async (req, res) => {
-  try {
-    await Comment.deleteMany({});
-    return res.send("deleted");
-  } catch (error) {
-    return res.send({ error });
   }
 });
 
